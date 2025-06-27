@@ -3,16 +3,17 @@ package org.yash;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 public class ConnectionPoolingForDbConnections {
     // JDBC settings
-    private static final String URL      = "jdbc:mysql://localhost:3306/db?useSSL=false&serverTimezone=UTC";
+    private static final String URL =
+            "jdbc:mysql://localhost:3306/testdb"
+                    + "?useSSL=false"
+                    + "&allowPublicKeyRetrieval=true"
+                    + "&serverTimezone=UTC";
     private static final String USER     = "root";
-    private static final String PASSWORD = "<fill-password-here>";
+    private static final String PASSWORD = "root_password";
 
     public static void main(String[] args) {
 //        callWithNonConnPool();
@@ -23,11 +24,11 @@ public class ConnectionPoolingForDbConnections {
         long startTime = System.currentTimeMillis();
         BlockingQueue<Connection> dbConnPool = getDbConnPool();
         List<Thread> threadList = new ArrayList<>();
-        for (int i = 0; i < 40; ++i) {
+        for (int i = 0; i < 100; ++i) {
             Runnable runnable = getRunnable(i, dbConnPool);
             Thread e = new Thread(runnable);
-            e.start();
             threadList.add(e);
+            e.start();
         }
         threadList.forEach(thread -> {
             try {
@@ -42,11 +43,11 @@ public class ConnectionPoolingForDbConnections {
     private static void callWithNonConnPool() {
         long startTime = System.currentTimeMillis();
         List<Thread> threadList = new ArrayList<>();
-        for (int i = 0; i < 149; ++i) {
+        for (int i = 0; i < 249; ++i) {
             Runnable runnable = getRunnable(i, null);
             Thread e = new Thread(runnable);
-            e.start();
             threadList.add(e);
+            e.start();
         }
         threadList.forEach(thread -> {
             try {
@@ -59,8 +60,9 @@ public class ConnectionPoolingForDbConnections {
     }
 
     private static BlockingQueue<Connection> getDbConnPool() {
-        BlockingQueue<Connection> pool = new LinkedBlockingQueue<>(10);
-        for (int i = 0; i < 10; i++) {
+        int totalDbConnections = 140;
+        BlockingQueue<Connection> pool = new LinkedBlockingQueue<>(totalDbConnections)/*ArrayBlockingQueue<>(140, true)*/;
+        for (int i = 0; i < totalDbConnections; i++) {
             pool.add(newDbConnection(null));
         }
         return pool;
@@ -68,18 +70,17 @@ public class ConnectionPoolingForDbConnections {
 
     private static Runnable getRunnable(int i, BlockingQueue<Connection> dbConnPool) {
         return () -> {
-//                synchronized (Main.class) {
+//                synchronized (ConnectionPoolingForDbConnections.class) {
                     Connection connection = newDbConnection(dbConnPool);
                     try {
                         PreparedStatement stmt = connection.prepareStatement("SELECT 1");
                         ResultSet rs = stmt.executeQuery();
                         rs.next();
-                        System.out.println(i + " :- OK (got " + rs.getInt(1) + ")");
-                        Thread.sleep(3000);
+//                        System.out.println(i + " :- OK (got " + rs.getInt(1) + ")");
                     } catch (Exception e) {
                         System.out.println(e.getMessage());
                     }
-                    if (connection != null) {
+                    if (dbConnPool != null && connection != null) {
                         try {
                             dbConnPool.put(connection);
                         } catch (InterruptedException e) {
