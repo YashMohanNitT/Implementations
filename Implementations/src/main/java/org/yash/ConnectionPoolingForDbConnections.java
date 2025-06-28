@@ -76,7 +76,7 @@ public class ConnectionPoolingForDbConnections {
                         PreparedStatement stmt = connection.prepareStatement("SELECT 1");
                         ResultSet rs = stmt.executeQuery();
                         rs.next();
-//                        System.out.println(i + " :- OK (got " + rs.getInt(1) + ")");
+                        System.out.println(i + " :- OK (got " + rs.getInt(1) + ")");
                     } catch (Exception e) {
                         System.out.println(e.getMessage());
                     }
